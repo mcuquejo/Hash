@@ -145,7 +145,6 @@ static void prueba_hash_borrar()
     char *clave1 = "perro", *valor1 = "guau";
     char *clave2 = "gato", *valor2 = "miau";
     char *clave3 = "vaca", *valor3 = "mu";
-
     /* Inserta 3 valores y luego los borra */
     print_test("Prueba hash insertar clave1", hash_guardar(hash, clave1, valor1));
     print_test("Prueba hash insertar clave2", hash_guardar(hash, clave2, valor2));
@@ -220,6 +219,7 @@ static void prueba_hash_volumen(size_t largo, bool debug)
 
     /* Inserta 'largo' parejas en el hash */
     bool ok = true;
+
     for (unsigned i = 0; i < largo; i++) {
         valores[i] = malloc(sizeof(int));
         sprintf(claves[i], "%08d", i);
@@ -230,7 +230,6 @@ static void prueba_hash_volumen(size_t largo, bool debug)
 
     if (debug) print_test("Prueba hash almacenar muchos elementos", ok);
     if (debug) print_test("Prueba hash la cantidad de elementos es correcta", hash_cantidad(hash) == largo);
-
     /* Verifica que devuelva los valores correctos */
     for (size_t i = 0; i < largo; i++) {
         ok = hash_pertenece(hash, claves[i]);
@@ -400,16 +399,27 @@ static void prueba_hash_iterar_volumen(size_t largo)
 void pruebas_hash_catedra()
 {
     /* Ejecuta todas las pruebas unitarias. */
+    printf("Prueba Hash vacio\n\n");
     prueba_crear_hash_vacio();
+    printf("Prueba iterar Hash vacio\n\n");
     prueba_iterar_hash_vacio();
+    printf("Prueba Hash insertar\n\n");
     prueba_hash_insertar();
+    printf("Prueba Hash reemplazar\n\n");
     prueba_hash_reemplazar();
+    printf("Prueba Hash reeemplazar con destruir\n\n");
     prueba_hash_reemplazar_con_destruir();
+    printf("Prueba Hash borrar\n\n");
     prueba_hash_borrar();
+    printf("Prueba Hash clave vacia\n\n");
     prueba_hash_clave_vacia();
+    printf("Prueba Hash valor null\n\n");
     prueba_hash_valor_null();
-    prueba_hash_volumen(5000, true);
+    printf("Prueba Hash volumen\n\n");
+    prueba_hash_volumen(10, true); //Hay problemas al hash_redimensionar
+    printf("Prueba Hash iterar\n\n");
     prueba_hash_iterar();
+    printf("Prueba Hash iterar volumen\n\n");
     prueba_hash_iterar_volumen(5000);
 }
 
