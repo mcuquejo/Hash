@@ -9,7 +9,8 @@
 #define OCUPADO 1
 #define BORRADO 2
 #define VACIO 0
-#define TAM_INICIAL 30
+#define NO_OCUPADO 3
+#define TAM_INICIAL 31
 #define CARGA_MAX 0.7
 #define CARGA_MIN 0.3
 /* ******************************************************************
@@ -38,6 +39,16 @@ struct hash_iter{
  *                      FUNCIONES AUXILIARES
  * *****************************************************************/
 
+
+
+char* strdup (const char* s) {
+	char* dup = malloc(strlen (s)+1);
+	if (dup == NULL)
+		return NULL;
+  strcpy(dup,s);
+	return dup;
+}
+
 size_t fhash(const char *s, size_t tam){
     size_t hashval;
 
@@ -46,41 +57,76 @@ size_t fhash(const char *s, size_t tam){
     return hashval % tam;
 }
 
-bool hash_redimensionar(hash_t* hash, size_t tam){
-  campo_t* campos = calloc(tam, sizeof(campo_t));
-  if (campos == NULL) return false;
-  for (size_t i=0; i<hash->capacidad;i++){
-    if (hash->campos[i].estado != OCUPADO) continue;
-    campos[fhash(hash->campos[i].clave, tam)] = hash->campos[i];
-  }
-  hash->capacidad = tam;
-  hash->campos = campos;
-  return true;
+campo_t crear_campo(char* clave, void* dato, size_t estado){
+  campo_t campo;
+  campo.estado = estado;
+  campo.clave = clave;
+  campo.valor = dato;
+  return campo;
 }
 
 
-size_t hash_obtener_posicion(const hash_t* hash,const char* clave, int* existencia)
-{
+
+
+
+size_t hash_buscar(const hash_t* hash,const char* clave){
   size_t indice = fhash(clave, hash->capacidad);
   size_t pos_act = 0;
-  for (size_t i=indice; i<hash->capacidad; i++){
+  for (size_t i=0; i<hash->capacidad; i++){
     pos_act = (indice+i)%hash->capacidad;
-    if (hash->campos[pos_act].clave == clave){
-      *existencia = 1;
-      return pos_act;
+    if (hash->campos[pos_act].estado == OCUPADO){
+      if (strcmp(hash->campos[pos_act].clave,clave)==0) return pos_act;
     }
+
   }
-  for (size_t i=indice; i<hash->capacidad; i++){
+  return 0;
+}
+
+size_t hash_buscar_sig(hash_t* hash,const char* clave){
+  size_t indice = fhash(clave, hash->capacidad);
+  size_t pos_act = 0;
+  for (size_t i=0; i<hash->capacidad; i++){
     pos_act = (indice+i)%hash->capacidad;
     if (hash->campos[pos_act].estado != OCUPADO){
-      *existencia = 0;
       return pos_act;
     }
+
   }
   return 0;
 }
 
 
+
+ bool campos_copiar(hash_t*hash, const char *clave, void *dato){
+    size_t pos;
+    if (hash_pertenece(hash, clave)){
+       pos = hash_buscar(hash, clave);
+       hash->campos[pos].valor = dato;
+       return true;
+    }
+    campo_t campo = crear_campo(strdup(clave), dato, OCUPADO);
+    pos = hash_buscar_sig(hash, clave);
+    hash->campos[pos] = campo;
+    return true;
+  }
+
+ bool hash_redimensionar(hash_t* hash, size_t tam){
+   campo_t* campos_nuevo = malloc(tam * sizeof(campo_t));
+   if (campos_nuevo == NULL) return false;
+   campo_t* campos_act = hash->campos;
+   hash->campos = campos_nuevo;
+   for (size_t i=0;i<tam; i++){
+     hash->campos[i] = crear_campo("", NULL, VACIO);
+   }
+   for (size_t i=0; i<hash->capacidad;i++){
+     if (campos_act[i].estado == OCUPADO){
+       campos_copiar(hash, campos_act[i].clave, campos_act[i].valor);
+     }
+   }
+   hash->capacidad = tam;
+   free(campos_act);
+   return true;
+ }
 
 /* ******************************************************************
  *                       PRIMITIVAS DEL HASH
@@ -91,56 +137,68 @@ hash_t *hash_crear(hash_destruir_dato_t destruir_dato){
    hash->cantidad = 0;
    hash->capacidad = TAM_INICIAL;
    hash->funcion_destruccion = destruir_dato;
-   hash->campos = calloc(TAM_INICIAL, sizeof(campo_t));
+   hash->campos = malloc(TAM_INICIAL*sizeof(campo_t));
+   for (size_t i=0;i<TAM_INICIAL; i++){
+     hash->campos[i] = crear_campo("", NULL, VACIO);
+   }
    return hash;
  }
 
-bool hash_guardar(hash_t *hash, const char *clave, void *dato){
-   if (((double)hash->cantidad/(double)hash->capacidad) >= CARGA_MAX){
-     hash_redimensionar(hash, hash->capacidad*2);
-   }
-   int existencia;
-   size_t pos = hash_obtener_posicion(hash, clave, &existencia);
 
-   if (existencia == 1){
+
+
+bool hash_guardar(hash_t *hash, const char *clave, void *dato){
+  size_t pos;
+  if (hash_pertenece(hash, clave)){
+     pos = hash_buscar(hash, clave);
      hash->campos[pos].valor = dato;
      return true;
-   }
-   campo_t campo;
-   campo.clave = (char*)clave; //ERROR: Revisar porque clave es 'const char*' y campo.clave es 'char*'
-   campo.valor = dato;
-   campo.estado = OCUPADO;
-   hash->campos[pos] = campo;
-   hash->cantidad++;
-   return true;
- }
+  }
+  if (((double)hash->cantidad)/(double)hash->capacidad >= CARGA_MAX){
+
+    hash_redimensionar(hash, hash->capacidad*2);
+  }
+  campo_t campo = crear_campo(strdup(clave), dato, OCUPADO);
+  pos = hash_buscar_sig(hash, clave);
+  hash->campos[pos] = campo;
+  hash->cantidad++;
+  return true;
+}
 
 void *hash_borrar(hash_t *hash, const char *clave){
-   int existencia;
-   size_t pos = hash_obtener_posicion(hash, clave, &existencia);
-   void* valor = NULL;
-   if (existencia == 1){
-     hash->campos[pos].clave = NULL;
-     hash->campos[pos].estado = BORRADO;
-     valor = hash->campos[pos].valor;
-     if (((double)hash->cantidad / (double)hash->capacidad) <= CARGA_MIN && hash->capacidad/2 > TAM_INICIAL){
-       hash_redimensionar(hash, hash->capacidad/2);
-     }
-     hash->cantidad--;
+   size_t pos;
+   if (!hash_pertenece(hash, clave)) return NULL;
+   pos = hash_buscar(hash, clave);
+   //AGREGAR FUNCION DE DESTRUCCION.
+   void* dato = hash->campos[pos].valor;
+   hash->campos[pos].estado = BORRADO;
+   hash->campos[pos].valor = NULL;
+   hash->campos[pos].clave ="";
+   if ((double)hash->cantidad/(double)hash->capacidad <= CARGA_MIN && hash->capacidad/2>TAM_INICIAL){
+     hash_redimensionar(hash, hash->capacidad/2);
    }
-   return valor;
+   hash->cantidad--;
+   return dato;
 }
 
 void *hash_obtener(const hash_t *hash, const char *clave){
-   int existencia;
-   size_t pos = hash_obtener_posicion(hash, clave, &existencia);
-   return existencia == 1 ? hash->campos[pos].valor : NULL;
+   bool ok;
+   ok = hash_pertenece(hash, clave);
+   if (ok) return hash->campos[hash_buscar(hash, clave)].valor;
+   return NULL;
 }
 
 bool hash_pertenece(const hash_t *hash, const char *clave){
-  int existencia;
-  hash_obtener_posicion(hash, clave, &existencia);
-  return existencia == 1;
+  size_t indice = fhash(clave, hash->capacidad);
+  size_t pos_act = 0;
+  if (hash->cantidad == 0) return false;
+  for (size_t i=0; i<hash->capacidad; i++){
+    pos_act = (indice+i)%hash->capacidad;
+    if (strcmp(hash->campos[pos_act].clave,clave)==0 && hash->campos[pos_act].estado == OCUPADO){
+      return true;
+    }
+  }
+  return false;
 }
 
 size_t hash_cantidad(const hash_t *hash){
@@ -150,11 +208,27 @@ size_t hash_cantidad(const hash_t *hash){
 void hash_destruir(hash_t *hash){
   for (size_t i=0; i<hash->capacidad; i++){
     if (hash->campos[i].estado != OCUPADO) continue;
-    if (hash->funcion_destruccion == NULL) break;
-    hash->funcion_destruccion(hash->campos[i].valor);
+    if (hash->funcion_destruccion != NULL){
+      hash->funcion_destruccion(hash->campos[i].valor);
+    }
   }
   free(hash->campos);
   free(hash);
+}
+
+void imprimir(const hash_t* hash){
+  printf("%s\n","IMPRESION DE HASH" );
+  for (size_t i=0; i<hash->capacidad; i++){
+    if (hash->campos[i].estado==OCUPADO){
+      printf("%s\n", hash->campos[i].clave);
+    }
+    if (hash->campos[i].estado == VACIO){
+      printf("%s\n", "VACIO");
+    }
+    if (hash->campos[i].estado == BORRADO){
+      printf("%s\n", "BORRADO");
+    }
+  }
 }
 
 /* ******************************************************************
@@ -165,7 +239,15 @@ hash_iter_t *hash_iter_crear(const hash_t *hash){
   hash_iter_t* iter = malloc(sizeof(hash_iter_t));
   if (iter == NULL) return NULL;
   iter->hash = hash;
+  if (iter->hash->cantidad ==0){
+    iter->posicion = 0;
+    iter->campo_act = iter->hash->campos[0];
+    return iter;
+  }
   iter->posicion = 0;
+  while (iter->hash->campos[iter->posicion].estado != OCUPADO){
+    iter->posicion++;
+  }
   iter->campo_act = iter->hash->campos[iter->posicion];
   return iter;
 }
@@ -174,6 +256,7 @@ bool hash_iter_avanzar(hash_iter_t *iter){
   if (hash_iter_al_final(iter)) return false;
   iter->posicion++;
   iter->campo_act = iter->hash->campos[iter->posicion];
+  if (iter->campo_act.estado != OCUPADO) hash_iter_avanzar(iter);
   return true;
 }
 

@@ -51,29 +51,26 @@ static void prueba_hash_insertar()
     char *clave1 = "perro", *valor1 = "guau";
     char *clave2 = "gato", *valor2 = "miau";
     char *clave3 = "vaca", *valor3 = "mu";
-
     /* Inserta 1 valor y luego lo borra */
     print_test("Prueba hash insertar clave1", hash_guardar(hash, clave1, valor1));
     print_test("Prueba hash la cantidad de elementos es 1", hash_cantidad(hash) == 1);
+    print_test("Prueba hash pertenerce clave 1 es true", hash_pertenece(hash, clave1));
     print_test("Prueba hash obtener clave1 es valor1", hash_obtener(hash, clave1) == valor1);
     print_test("Prueba hash obtener clave1 es valor1", hash_obtener(hash, clave1) == valor1);
     print_test("Prueba hash pertenece clave1, es true", hash_pertenece(hash, clave1));
     print_test("Prueba hash borrar clave1, es valor1", hash_borrar(hash, clave1) == valor1);
     print_test("Prueba hash la cantidad de elementos es 0", hash_cantidad(hash) == 0);
-
     /* Inserta otros 2 valores y no los borra (se destruyen con el hash) */
     print_test("Prueba hash insertar clave2", hash_guardar(hash, clave2, valor2));
     print_test("Prueba hash la cantidad de elementos es 1", hash_cantidad(hash) == 1);
     print_test("Prueba hash obtener clave2 es valor2", hash_obtener(hash, clave2) == valor2);
     print_test("Prueba hash obtener clave2 es valor2", hash_obtener(hash, clave2) == valor2);
     print_test("Prueba hash pertenece clave2, es true", hash_pertenece(hash, clave2));
-
     print_test("Prueba hash insertar clave3", hash_guardar(hash, clave3, valor3));
     print_test("Prueba hash la cantidad de elementos es 2", hash_cantidad(hash) == 2);
     print_test("Prueba hash obtener clave3 es valor3", hash_obtener(hash, clave3) == valor3);
     print_test("Prueba hash obtener clave3 es valor3", hash_obtener(hash, clave3) == valor3);
     print_test("Prueba hash pertenece clave3, es true", hash_pertenece(hash, clave3));
-
     hash_destruir(hash);
 }
 
@@ -226,8 +223,8 @@ static void prueba_hash_volumen(size_t largo, bool debug)
         *valores[i] = i;
         ok = hash_guardar(hash, claves[i], valores[i]);
         if (!ok) break;
-    }
 
+    }
     if (debug) print_test("Prueba hash almacenar muchos elementos", ok);
     if (debug) print_test("Prueba hash la cantidad de elementos es correcta", hash_cantidad(hash) == largo);
     /* Verifica que devuelva los valores correctos */
@@ -237,7 +234,6 @@ static void prueba_hash_volumen(size_t largo, bool debug)
         ok = hash_obtener(hash, claves[i]) == valores[i];
         if (!ok) break;
     }
-
     if (debug) print_test("Prueba hash pertenece y obtener muchos elementos", ok);
     if (debug) print_test("Prueba hash la cantidad de elementos es correcta", hash_cantidad(hash) == largo);
 
@@ -297,6 +293,7 @@ static void prueba_hash_iterar()
 
     /* Primer valor */
     clave = hash_iter_ver_actual(iter);
+    printf("%s\n", hash_iter_ver_actual(iter));
     indice = buscar(clave, claves, sizeof(claves) / sizeof(char *));
     print_test("Prueba hash iterador ver actual, es una clave valida", indice != -1);
     print_test("Prueba hash iterador ver actual, no es el mismo puntero", clave != claves[indice]);
@@ -416,11 +413,11 @@ void pruebas_hash_catedra()
     printf("Prueba Hash valor null\n\n");
     prueba_hash_valor_null();
     printf("Prueba Hash volumen\n\n");
-    prueba_hash_volumen(10, true); //Hay problemas al hash_redimensionar
+    prueba_hash_volumen(500, true); //Hay problemas al hash_redimensionar
     printf("Prueba Hash iterar\n\n");
     prueba_hash_iterar();
     printf("Prueba Hash iterar volumen\n\n");
-    prueba_hash_iterar_volumen(5000);
+    prueba_hash_iterar_volumen(500);
 }
 
 void pruebas_volumen_catedra(size_t largo)
